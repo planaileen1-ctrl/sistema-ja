@@ -21,7 +21,7 @@ export default function DirectivaJAPage() {
       <div className="grid gap-8 md:grid-cols-3">
 
         {/* Editar Grupos GP */}
-        <Link href="/dashboard/directiva-ja/grupos">
+        <Link href="/dashboard/directiva-ja/editar-grupos">
           <div className="group cursor-pointer rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 p-6 text-white shadow-xl transition hover:-translate-y-2 hover:shadow-2xl">
             <div className="mb-4 text-4xl">🗂️</div>
             <h2 className="text-2xl font-semibold mb-2">

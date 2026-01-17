@@ -5,76 +5,56 @@ import Link from "next/link";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+/* ===== TIPOS ===== */
+type Miembro = {
+  nombre: string;
+};
+
 type Grupo = {
   id: string;
   nombreGrupo: string;
   lider: string;
-};
-
-type Miembro = {
-  id: string;
-  nombre: string;
+  miembros: Miembro[];
 };
 
 export default function VerMiembrosGP() {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [grupoActivo, setGrupoActivo] = useState<Grupo | null>(null);
-  const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [totalMiembros, setTotalMiembros] = useState(0);
 
-  /* ======= GRUPOS EN TIEMPO REAL ======= */
+  /* ======= GRUPOS + MIEMBROS EN TIEMPO REAL ======= */
   useEffect(() => {
     const q = query(collection(db, "grupos_gp"));
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const data: Grupo[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Grupo, "id">),
-      }));
+      const data: Grupo[] = snapshot.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          nombreGrupo: d.nombreGrupo,
+          lider: d.lider,
+          miembros: d.miembros || [],
+        };
+      });
+
       setGrupos(data);
+
+      // calcular total de miembros
+      const total = data.reduce(
+        (acc, g) => acc + (g.miembros?.length || 0),
+        0
+      );
+      setTotalMiembros(total);
+
+      // mantener grupo activo actualizado
+      if (grupoActivo) {
+        const actualizado = data.find((g) => g.id === grupoActivo.id);
+        setGrupoActivo(actualizado || null);
+      }
     });
 
     return () => unsub();
   }, []);
-
-  /* ======= MIEMBROS DEL GRUPO SELECCIONADO ======= */
-  useEffect(() => {
-    if (!grupoActivo) return;
-
-    const miembrosRef = collection(db, "grupos_gp", grupoActivo.id, "miembros");
-
-    const unsub = onSnapshot(miembrosRef, (snapshot) => {
-      const data: Miembro[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        nombre: doc.data().nombre,
-      }));
-      setMiembros(data);
-    });
-
-    return () => unsub();
-  }, [grupoActivo]);
-
-  /* ======= TOTAL DE MIEMBROS ======= */
-  useEffect(() => {
-    if (grupos.length === 0) {
-      setTotalMiembros(0);
-      return;
-    }
-
-    const unsubList: (() => void)[] = [];
-    let total = 0;
-
-    grupos.forEach((g) => {
-      const ref = collection(db, "grupos_gp", g.id, "miembros");
-      const unsub = onSnapshot(ref, (snapshot) => {
-        total += snapshot.size;
-        setTotalMiembros((prev) => prev + snapshot.size);
-      });
-      unsubList.push(unsub);
-    });
-
-    return () => unsubList.forEach((u) => u());
-  }, [grupos]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-8">
@@ -121,6 +101,9 @@ export default function VerMiembrosGP() {
                   <p className="text-sm opacity-80">
                     Líder: {grupo.lider}
                   </p>
+                  <p className="text-sm opacity-80">
+                    Miembros: {grupo.miembros.length}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -138,16 +121,16 @@ export default function VerMiembrosGP() {
               </p>
             )}
 
-            {grupoActivo && miembros.length === 0 && (
+            {grupoActivo && grupoActivo.miembros.length === 0 && (
               <p className="text-gray-500">
                 Este grupo no tiene miembros
               </p>
             )}
 
             <ul className="space-y-2">
-              {miembros.map((m, i) => (
+              {grupoActivo?.miembros.map((m, i) => (
                 <li
-                  key={m.id}
+                  key={i}
                   className="bg-slate-100 p-3 rounded-xl"
                 >
                   {i + 1}. 👤 {m.nombre}
@@ -161,7 +144,7 @@ export default function VerMiembrosGP() {
         {/* ======= VOLVER ======= */}
         <div className="mt-8 text-center">
           <Link
-            href="/dashboard/"
+            href="/dashboard"
             className="text-indigo-600 font-semibold hover:underline"
           >
             ← Volver al menú

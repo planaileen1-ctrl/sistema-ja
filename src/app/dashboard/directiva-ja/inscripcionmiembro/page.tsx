@@ -5,14 +5,14 @@ import Link from "next/link";
 import {
   collection,
   addDoc,
-  onSnapshot,
-  Timestamp,
+  updateDoc,
   doc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+/* ===== TIPOS ===== */
 type Miembro = {
-  id: string;
   nombre: string;
 };
 
@@ -24,56 +24,37 @@ export default function InscripcionMiembroPage() {
   const [miembro, setMiembro] = useState("");
   const [miembros, setMiembros] = useState<Miembro[]>([]);
 
-  /* ======= CREAR GRUPO (UNA SOLA VEZ) ======= */
+  /* ===== CREAR GRUPO (UNA SOLA VEZ) ===== */
   const crearGrupo = async () => {
-    if (!nombreGrupo || !lider) {
+    if (!nombreGrupo.trim() || !lider.trim()) {
       alert("Ingresa nombre del grupo y líder");
       return;
     }
 
     const docRef = await addDoc(collection(db, "grupos_gp"), {
-      nombreGrupo,
-      lider,
+      nombreGrupo: nombreGrupo.trim(),
+      lider: lider.trim(),
+      miembros: [], // 👈 CLAVE
       createdAt: Timestamp.now(),
     });
 
     setGrupoId(docRef.id);
   };
 
-  /* ======= ESCUCHA MIEMBROS EN TIEMPO REAL ======= */
-  useEffect(() => {
-    if (!grupoId) return;
+  /* ===== AGREGAR MIEMBRO ===== */
+  const agregarMiembro = async () => {
+    if (!miembro.trim() || !grupoId) return;
 
-    const miembrosRef = collection(
-      db,
-      "grupos_gp",
-      grupoId,
-      "miembros"
-    );
+    const nuevosMiembros = [
+      ...miembros,
+      { nombre: miembro.trim() },
+    ];
 
-    const unsub = onSnapshot(miembrosRef, (snapshot) => {
-      const data: Miembro[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        nombre: doc.data().nombre,
-      }));
-      setMiembros(data);
+    await updateDoc(doc(db, "grupos_gp", grupoId), {
+      miembros: nuevosMiembros,
     });
 
-    return () => unsub();
-  }, [grupoId]);
-
-  /* ======= AGREGAR MIEMBRO ======= */
-  const agregarMiembro = async () => {
-    if (!miembro || !grupoId) return;
-
-    await addDoc(
-      collection(db, "grupos_gp", grupoId, "miembros"),
-      {
-        nombre: miembro,
-        createdAt: Timestamp.now(),
-      }
-    );
-
+    setMiembros(nuevosMiembros);
     setMiembro("");
   };
 
@@ -132,9 +113,15 @@ export default function InscripcionMiembroPage() {
             </div>
 
             <ul className="space-y-2 mb-6">
+              {miembros.length === 0 && (
+                <li className="text-slate-500">
+                  Aún no hay miembros registrados
+                </li>
+              )}
+
               {miembros.map((m, i) => (
                 <li
-                  key={m.id}
+                  key={i}
                   className="bg-slate-100 p-3 rounded-xl"
                 >
                   {i + 1}. 👤 {m.nombre}
