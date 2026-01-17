@@ -30,10 +30,10 @@ export default function DashboardPage() {
           <div className="group cursor-pointer rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 p-6 text-white shadow-lg transition hover:-translate-y-2 hover:shadow-2xl">
             <div className="mb-4 text-4xl">🧭</div>
             <h2 className="text-2xl font-semibold mb-2">
-              Líderes de GP
+              Crear GP y miembros
             </h2>
             <p className="text-emerald-100">
-              Organización y seguimiento de líderes.
+              Registro y crecimiento de la comunidad.
             </p>
             <span className="mt-4 inline-block text-sm opacity-80 group-hover:opacity-100">
               Entrar →
@@ -49,7 +49,7 @@ export default function DashboardPage() {
               Miembros GP
             </h2>
             <p className="text-pink-100">
-              Registro y crecimiento de la comunidad.
+              Nuestra comunidad
             </p>
             <span className="mt-4 inline-block text-sm opacity-80 group-hover:opacity-100">
               Entrar →

@@ -12,7 +12,7 @@ export default function MenuDirectivaJA() {
       desc: "Crear, editar y organizar Grupos Pequeños",
       icon: "🛠️",
       gradient: "from-indigo-500 to-purple-600",
-      path: "/dashboard/directiva-ja/grupos",
+      path: "/dashboard/directiva-ja/editar-grupos",
     },
     {
       title: "Calificar GP",
