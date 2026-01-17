@@ -3,217 +3,258 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import {
-  collection,
-  addDoc,
-  Timestamp,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-} from "firebase/firestore";
-import React from "react";
+import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 
-/* ================= CONFIG ================= */
+interface Invitado {
+  nombre: string;
+  edad: number | null;
+}
 
-const criterios = [
-  "Uniforme completo",
-  "Puntual inicio del programa",
-  "Ordenados",
-  "Grupo completo",
-];
+interface Grupo {
+  id: string;
+  nombreGrupo: string;
+  lider: string;
+}
 
-// cada estrella = 5 puntos → total 100
-const estrellasAPuntos = (e: number) => e * 5;
-
-/* ========================================= */
-
-export default function CalificarGP() {
+export default function EvaluacionGP() {
   const router = useRouter();
 
-  const [calificador, setCalificador] = useState("");
-  const [grupo, setGrupo] = useState("");
-  const [calificaciones, setCalificaciones] = useState<Record<string, number>>(
-    {}
-  );
+  // Datos fijos que se conservan
+  const [calificador, setCalificador] = useState<string>("");
+  const [grupoPertenece, setGrupoPertenece] = useState<string>("");
 
-  const [bloqueado, setBloqueado] = useState(false);
-  const [pinIngresado, setPinIngresado] = useState("");
-  const [pinCorrecto, setPinCorrecto] = useState<string | null>(null);
+  // Grupo que va a ser evaluado
+  const [grupoEvaluado, setGrupoEvaluado] = useState<string>("");
+
+  // Lista de grupos existentes desde Firebase
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+
+  // Criterios
+  const [puntosAsistencia, setPuntosAsistencia] = useState<number>(0);
+  const [puntosPresentacion, setPuntosPresentacion] = useState<number>(0);
+
+  // Lista de invitados
+  const [invitados, setInvitados] = useState<Invitado[]>([]);
+
+  const [nombreInvitado, setNombreInvitado] = useState<string>("");
+  const [edadInvitado, setEdadInvitado] = useState<string>("");
+
   const [guardado, setGuardado] = useState(false);
 
+  // Fecha y hora automáticas
   const fecha = new Date().toISOString().split("T")[0];
   const hora = new Date().toLocaleTimeString();
 
-  /* ======= cargar PIN desde Firebase ======= */
-  useEffect(() => {
-    const cargarPin = async () => {
-      const ref = doc(db, "configuracion", "seguridad");
-      const snap = await getDoc(ref);
+  // ======= Funciones =======
 
-      if (snap.exists()) {
-        setPinCorrecto(snap.data().pinDirectora);
-      }
-    };
-
-    cargarPin();
-  }, []);
-
-  const seleccionarEstrella = (criterio: string, valor: number) => {
-    if (bloqueado) return;
-
-    setCalificaciones((prev) => ({
-      ...prev,
-      [criterio]: valor,
-    }));
+  // Traer grupos desde Firebase
+  const cargarGrupos = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "grupos_gp"));
+      const lista: Grupo[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.nombreGrupo && data.lider) {
+          lista.push({
+            id: doc.id,
+            nombreGrupo: data.nombreGrupo,
+            lider: data.lider,
+          });
+        }
+      });
+      // Orden alfabético por nombreGrupo
+      lista.sort((a, b) => a.nombreGrupo.localeCompare(b.nombreGrupo));
+      setGrupos(lista);
+    } catch (e) {
+      console.error("Error al cargar grupos:", e);
+    }
   };
 
-  const totalPuntos = Object.values(calificaciones).reduce(
-    (acc, e) => acc + estrellasAPuntos(e),
+  useEffect(() => {
+    cargarGrupos();
+  }, []);
+
+  // Calcular puntos por invitado
+  const puntosPorInvitado = (edad: number | null) => {
+    if (edad && edad >= 16 && edad <= 29) return 800;
+    return 0;
+  };
+
+  const totalPuntosInvitados = invitados.reduce(
+    (acc, inv) => acc + puntosPorInvitado(inv.edad),
     0
   );
 
-  const yaFueCalificado = async () => {
-    const q = query(
-      collection(db, "calificaciones_gp"),
-      where("grupo", "==", grupo),
-      where("fecha", "==", fecha)
-    );
+  const totalPuntos = puntosAsistencia + puntosPresentacion + totalPuntosInvitados;
 
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      setBloqueado(true);
-      return true;
-    }
-    return false;
-  };
-
-  const guardarCalificacion = async () => {
-    if (!calificador || !grupo) {
-      alert("Completa todos los campos");
+  // Agregar invitado a la lista
+  const agregarInvitado = () => {
+    if (!nombreInvitado || !edadInvitado) {
+      alert("Completa el nombre y edad del invitado");
       return;
     }
 
-    if (Object.keys(calificaciones).length !== criterios.length) {
-      alert("Califica todos los criterios");
+    const edad = Number(edadInvitado);
+    if (isNaN(edad) || edad <= 0) {
+      alert("Edad inválida");
       return;
     }
 
-    if (!bloqueado) {
-      const existe = await yaFueCalificado();
-      if (existe) return;
-    }
-
-    await addDoc(collection(db, "calificaciones_gp"), {
-      calificador,
-      grupo,
-      criterios: calificaciones,
-      total: totalPuntos,
-      fecha,
-      hora,
-      createdAt: Timestamp.now(),
-    });
-
-    setGuardado(true);
-    setBloqueado(false);
+    setInvitados([...invitados, { nombre: nombreInvitado, edad }]);
+    setNombreInvitado("");
+    setEdadInvitado("");
   };
 
-  const autorizarPin = () => {
-    if (pinIngresado === pinCorrecto) {
-      setBloqueado(false);
-      setPinIngresado("");
-      alert("PIN correcto. Puedes calificar nuevamente.");
-    } else {
-      alert("PIN incorrecto");
+  // Guardar evaluación en Firestore
+  const guardarEvaluacion = async () => {
+    if (!calificador || !grupoPertenece || !grupoEvaluado) {
+      alert("Completa los campos de calificador, grupo al que pertenece y grupo evaluado.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "evaluaciones_gp"), {
+        calificador,
+        grupoPertenece,
+        grupoEvaluado,
+        puntosAsistencia,
+        puntosPresentacion,
+        invitados,
+        totalPuntos,
+        fecha,
+        hora,
+        createdAt: Timestamp.now(),
+      });
+
+      setGuardado(true);
+
+      // Reset opcional
+      setGrupoEvaluado("");
+      setPuntosAsistencia(0);
+      setPuntosPresentacion(0);
+      setInvitados([]);
+    } catch (e) {
+      console.error(e);
+      alert("Error al guardar la evaluación");
     }
   };
 
   return (
     <main style={bg}>
       <div style={card}>
-        <h1 style={title}>Hoja de Calificación GP</h1>
+        <h1 style={title}>Evaluación Grupo Pequeño</h1>
 
+        {/* Calificador */}
         <input
+          type="text"
           placeholder="Nombre del calificador"
           value={calificador}
           onChange={(e) => setCalificador(e.target.value)}
           style={input}
         />
 
+        {/* Grupo al que pertenece */}
         <input
-          placeholder="Nombre del Grupo Pequeño"
-          value={grupo}
-          onChange={(e) => setGrupo(e.target.value)}
+          type="text"
+          placeholder="Grupo al que pertenece"
+          value={grupoPertenece}
+          onChange={(e) => setGrupoPertenece(e.target.value)}
           style={input}
         />
 
-        <div style={meta}>
-          <span>📅 {fecha}</span>
-          <span>⏰ {hora}</span>
+        {/* Grupo evaluado */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ marginBottom: 6, display: "block" }}>Grupo a evaluar:</label>
+          <select
+            value={grupoEvaluado}
+            onChange={(e) => setGrupoEvaluado(e.target.value)}
+            style={input}
+          >
+            <option value="">-- Selecciona un grupo --</option>
+            {grupos.map((g) => (
+              <option key={g.id} value={g.nombreGrupo}>
+                {g.nombreGrupo} - Líder: {g.lider}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {bloqueado && (
-          <div style={bloque}>
-            <strong>🔒 Este GP ya fue calificado hoy</strong>
+        {/* Fecha y hora */}
+        <div style={{ marginBottom: 16, color: "#555", fontSize: 14 }}>
+          📅 Fecha: {fecha} | ⏰ Hora: {hora}
+        </div>
 
+        {/* Asistencia puntual */}
+        <div style={criterioBox}>
+          <strong>Asistencia puntual:</strong>
+          <input
+            type="number"
+            placeholder="Ingrese puntos"
+            value={puntosAsistencia}
+            onChange={(e) => setPuntosAsistencia(Number(e.target.value))}
+            style={input}
+          />
+        </div>
+
+        {/* Invitados */}
+        <div style={criterioBox}>
+          <strong>Invitados:</strong>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <input
-              type="password"
-              maxLength={4}
-              placeholder="PIN directora"
-              value={pinIngresado}
-              onChange={(e) => setPinIngresado(e.target.value)}
-              style={input}
+              type="text"
+              placeholder="Nombre del invitado"
+              value={nombreInvitado}
+              onChange={(e) => setNombreInvitado(e.target.value)}
+              style={{ ...input, flex: 2 }}
             />
-
-            <button onClick={autorizarPin} style={btnDanger}>
-              Autorizar nueva calificación
+            <input
+              type="number"
+              placeholder="Edad"
+              value={edadInvitado}
+              onChange={(e) => setEdadInvitado(e.target.value)}
+              style={{ ...input, flex: 1 }}
+            />
+            <button onClick={agregarInvitado} style={btnSmall}>
+              Agregar
             </button>
           </div>
-        )}
 
-        {criterios.map((criterio) => (
-          <div key={criterio} style={criterioBox}>
-            <strong>{criterio}</strong>
+          <ul>
+            {invitados.map((inv, i) => (
+              <li key={i}>
+                {inv.nombre} - {inv.edad} años → Puntos: {puntosPorInvitado(inv.edad)}
+              </li>
+            ))}
+          </ul>
+        </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const activa = n <= (calificaciones[criterio] || 0);
+        {/* Presentación del programa */}
+        <div style={criterioBox}>
+          <strong>Presentación del programa:</strong>
+          <input
+            type="number"
+            placeholder="Ingrese puntos"
+            value={puntosPresentacion}
+            onChange={(e) => setPuntosPresentacion(Number(e.target.value))}
+            style={input}
+          />
+        </div>
 
-                return (
-                  <button
-                    key={n}
-                    onClick={() => seleccionarEstrella(criterio, n)}
-                    style={{
-                      ...estrella,
-                      color: activa ? "#facc15" : "#d1d5db",
-                      transform: activa ? "scale(1.25)" : "scale(1)",
-                    }}
-                  >
-                    ★
-                  </button>
-                );
-              })}
-            </div>
+        {/* Total */}
+        <h2 style={total}>Total: {totalPuntos} puntos</h2>
 
-            <small>Puntaje: {(calificaciones[criterio] || 0) * 5} / 25</small>
-          </div>
-        ))}
+        {guardado && <div style={ok}>✅ Evaluación guardada correctamente</div>}
 
-        <h2 style={total}>Total: {totalPuntos} / 100</h2>
-
-        {guardado && <div style={ok}>✅ Calificación guardada</div>}
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={guardarCalificacion} style={btnPrimary}>
-            Guardar
+        {/* Botones */}
+        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+          <button onClick={guardarEvaluacion} style={btnPrimary}>
+            Guardar Evaluación
           </button>
           <button
             onClick={() => router.push("/dashboard/directiva-ja/menu")}
             style={btnSec}
           >
-            Volver
+            Volver al Menú
           </button>
         </div>
       </div>
@@ -221,8 +262,7 @@ export default function CalificarGP() {
   );
 }
 
-/* ========= ESTILOS TIPADOS ========= */
-
+/* ========= ESTILOS ========= */
 const bg: React.CSSProperties = {
   minHeight: "100vh",
   padding: 24,
@@ -230,7 +270,7 @@ const bg: React.CSSProperties = {
 };
 
 const card: React.CSSProperties = {
-  maxWidth: 720,
+  maxWidth: 800,
   margin: "0 auto",
   background: "#fff",
   padding: 32,
@@ -252,27 +292,11 @@ const input: React.CSSProperties = {
   border: "1px solid #ddd",
 };
 
-const meta: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: 13,
-  opacity: 0.6,
-  marginBottom: 16,
-};
-
 const criterioBox: React.CSSProperties = {
   border: "1px solid #eee",
   padding: 16,
   borderRadius: 16,
   marginBottom: 14,
-};
-
-const estrella: React.CSSProperties = {
-  fontSize: 38,
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  transition: "all .15s ease",
 };
 
 const total: React.CSSProperties = {
@@ -287,30 +311,26 @@ const btnPrimary: React.CSSProperties = {
   padding: 14,
   borderRadius: 14,
   border: "none",
+  cursor: "pointer",
 };
 
 const btnSec: React.CSSProperties = {
   flex: 1,
   background: "#e5e7eb",
+  color: "#000",
   padding: 14,
   borderRadius: 14,
   border: "none",
+  cursor: "pointer",
 };
 
-const btnDanger: React.CSSProperties = {
-  background: "#dc2626",
+const btnSmall: React.CSSProperties = {
+  background: "#4ade80",
   color: "#fff",
-  padding: 12,
-  borderRadius: 12,
-  width: "100%",
   border: "none",
-};
-
-const bloque: React.CSSProperties = {
-  background: "#fff3cd",
-  padding: 16,
-  borderRadius: 16,
-  marginBottom: 16,
+  borderRadius: 8,
+  padding: "6px 12px",
+  cursor: "pointer",
 };
 
 const ok: React.CSSProperties = {
@@ -318,4 +338,5 @@ const ok: React.CSSProperties = {
   padding: 12,
   borderRadius: 12,
   textAlign: "center",
+  marginBottom: 16,
 };
