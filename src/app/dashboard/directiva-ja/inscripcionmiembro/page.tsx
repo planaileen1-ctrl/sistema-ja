@@ -145,7 +145,7 @@ export default function InscripcionMiembroPage() {
         )}
 
         <Link
-          href="/dashboard/directiva-ja/menu"
+          href="/dashboard"
           className="text-indigo-600 font-semibold hover:underline"
         >
           ← Volver al menú

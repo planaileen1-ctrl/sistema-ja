@@ -161,7 +161,7 @@ export default function VerMiembrosGP() {
         {/* ======= VOLVER ======= */}
         <div className="mt-8 text-center">
           <Link
-            href="/dashboard/directiva-ja/menu"
+            href="/dashboard/"
             className="text-indigo-600 font-semibold hover:underline"
           >
             ← Volver al menú
