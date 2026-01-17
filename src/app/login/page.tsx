@@ -1,24 +1,43 @@
 "use client";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
     setError("");
 
+    if (pin.length !== 4) {
+      setError("El PIN debe tener 4 dígitos");
+      return;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("dashboard/directiva-ja/menu");
+      // Accedemos al documento correcto y al campo exacto
+      const docRef = doc(db, "configuracion", "seguridad");
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const storedPin = docSnap.data().pinDirectora; // <-- tu campo exacto
+
+        if (pin === storedPin) {
+          // PIN correcto, redirigir
+          router.push("dashboard/directiva-ja/menu");
+        } else {
+          setError("PIN incorrecto");
+        }
+      } else {
+        setError("No se encontró la configuración de seguridad");
+      }
     } catch (e) {
-      setError("Correo o contraseña incorrectos");
+      console.error(e);
+      setError("Error al verificar el PIN");
     }
   };
 
@@ -28,17 +47,11 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold mb-6 text-center">Login Directiva JA</h1>
 
         <input
-          type="email"
-          placeholder="Correo"
-          className="w-full mb-4 p-3 border rounded-xl"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Contraseña"
-          className="w-full mb-4 p-3 border rounded-xl"
-          onChange={(e) => setPassword(e.target.value)}
+          type="text"
+          placeholder="Ingresa tu PIN"
+          maxLength={4}
+          className="w-full mb-4 p-3 border rounded-xl text-center text-xl tracking-widest"
+          onChange={(e) => setPin(e.target.value.replace(/\D/, ""))} // solo números
         />
 
         {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
