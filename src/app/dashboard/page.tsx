@@ -25,8 +25,8 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Líderes de GP */}
-        <Link href="/dashboard/lideres">
+        {/* Inscripcion miembro GP */}
+        <Link href="/dashboard/directiva-ja/inscripcionmiembro">
           <div className="group cursor-pointer rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 p-6 text-white shadow-lg transition hover:-translate-y-2 hover:shadow-2xl">
             <div className="mb-4 text-4xl">🧭</div>
             <h2 className="text-2xl font-semibold mb-2">
@@ -42,7 +42,7 @@ export default function DashboardPage() {
         </Link>
 
         {/* Miembros GP */}
-        <Link href="/dashboard/miembros">
+        <Link href="/dashboard/directiva-ja/miembros">
           <div className="group cursor-pointer rounded-3xl bg-gradient-to-br from-pink-500 to-orange-500 p-6 text-white shadow-lg transition hover:-translate-y-2 hover:shadow-2xl">
             <div className="mb-4 text-4xl">👥</div>
             <h2 className="text-2xl font-semibold mb-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function MenuDirectivaJA() {
   const router = useRouter();
@@ -25,12 +26,23 @@ export default function MenuDirectivaJA() {
       desc: "Ver rankings y GP destacados",
       icon: "🏆",
       gradient: "from-pink-500 to-orange-500",
-      path: "/dashboard/directiva-ja/ganadores",
+      path: "/dashboard/directiva-ja/ranking",
     },
   ];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-8">
+
+      {/* Link de regreso al dashboard */}
+      <div className="mb-6">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-indigo-700 font-semibold hover:underline"
+        >
+          ← Volver al menú principal
+        </Link>
+      </div>
+
       <h1 className="text-4xl font-bold mb-10 text-gray-800">
         Menú Directiva JA
       </h1>

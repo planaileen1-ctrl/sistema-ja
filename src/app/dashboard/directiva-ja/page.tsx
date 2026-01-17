@@ -3,6 +3,17 @@ import Link from "next/link";
 export default function DirectivaJAPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 p-8">
+
+      {/* Volver al Dashboard */}
+      <div className="mb-6">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-indigo-700 font-semibold hover:underline"
+        >
+          ← Volver al menú principal
+        </Link>
+      </div>
+
       <h1 className="text-4xl font-bold mb-10 text-gray-800">
         Panel Directiva JA
       </h1>
