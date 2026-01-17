@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
 
 interface Invitado {
   nombre: string;
@@ -47,7 +47,6 @@ export default function EvaluacionGP() {
 
   // ======= Funciones =======
 
-  // Traer grupos desde Firebase
   const cargarGrupos = async () => {
     try {
       const snapshot = await getDocs(collection(db, "grupos_gp"));
@@ -62,7 +61,6 @@ export default function EvaluacionGP() {
           });
         }
       });
-      // Orden alfabético por nombreGrupo
       lista.sort((a, b) => a.nombreGrupo.localeCompare(b.nombreGrupo));
       setGrupos(lista);
     } catch (e) {
@@ -70,46 +68,57 @@ export default function EvaluacionGP() {
     }
   };
 
+  const cargarInvitadosAntiguos = async (nombreGrupo: string) => {
+    try {
+      if (!nombreGrupo) return;
+
+      const q = query(
+        collection(db, "evaluaciones_gp"),
+        where("grupoEvaluado", "==", nombreGrupo),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      );
+
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        setInvitados(data.invitados || []);
+      } else {
+        setInvitados([]);
+      }
+    } catch (e) {
+      console.error("Error al cargar invitados antiguos:", e);
+      setInvitados([]);
+    }
+  };
+
   useEffect(() => {
     cargarGrupos();
   }, []);
 
-  // Calcular puntos por invitado
-  const puntosPorInvitado = (edad: number | null) => {
-    if (edad && edad >= 16 && edad <= 29) return 800;
-    return 0;
-  };
+  useEffect(() => {
+    cargarInvitadosAntiguos(grupoEvaluado);
+  }, [grupoEvaluado]);
 
-  const totalPuntosInvitados = invitados.reduce(
-    (acc, inv) => acc + puntosPorInvitado(inv.edad),
-    0
-  );
+  const puntosPorInvitado = (edad: number | null) => (edad && edad >= 16 && edad <= 29 ? 800 : 0);
 
+  const totalPuntosInvitados = invitados.reduce((acc, inv) => acc + puntosPorInvitado(inv.edad), 0);
   const totalPuntos = puntosAsistencia + puntosPresentacion + totalPuntosInvitados;
 
-  // Agregar invitado a la lista
   const agregarInvitado = () => {
-    if (!nombreInvitado || !edadInvitado) {
-      alert("Completa el nombre y edad del invitado");
-      return;
-    }
+    if (!nombreInvitado || !edadInvitado) return alert("Completa el nombre y edad del invitado");
 
     const edad = Number(edadInvitado);
-    if (isNaN(edad) || edad <= 0) {
-      alert("Edad inválida");
-      return;
-    }
+    if (isNaN(edad) || edad <= 0) return alert("Edad inválida");
 
     setInvitados([...invitados, { nombre: nombreInvitado, edad }]);
     setNombreInvitado("");
     setEdadInvitado("");
   };
 
-  // Guardar evaluación en Firestore
   const guardarEvaluacion = async () => {
     if (!calificador || !grupoPertenece || !grupoEvaluado) {
-      alert("Completa los campos de calificador, grupo al que pertenece y grupo evaluado.");
-      return;
+      return alert("Completa todos los campos obligatorios");
     }
 
     try {
@@ -127,8 +136,6 @@ export default function EvaluacionGP() {
       });
 
       setGuardado(true);
-
-      // Reset opcional
       setGrupoEvaluado("");
       setPuntosAsistencia(0);
       setPuntosPresentacion(0);
@@ -164,7 +171,7 @@ export default function EvaluacionGP() {
 
         {/* Grupo evaluado */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ marginBottom: 6, display: "block" }}>Grupo a evaluar:</label>
+          <label style={{ marginBottom: 6, display: "block", fontWeight: 600 }}>Grupo a evaluar:</label>
           <select
             value={grupoEvaluado}
             onChange={(e) => setGrupoEvaluado(e.target.value)}
@@ -180,7 +187,7 @@ export default function EvaluacionGP() {
         </div>
 
         {/* Fecha y hora */}
-        <div style={{ marginBottom: 16, color: "#555", fontSize: 14 }}>
+        <div style={fechaHora}>
           📅 Fecha: {fecha} | ⏰ Hora: {hora}
         </div>
 
@@ -250,10 +257,7 @@ export default function EvaluacionGP() {
           <button onClick={guardarEvaluacion} style={btnPrimary}>
             Guardar Evaluación
           </button>
-          <button
-            onClick={() => router.push("/dashboard/directiva-ja/menu")}
-            style={btnSec}
-          >
+          <button onClick={() => router.push("/dashboard/directiva-ja/menu")} style={btnSec}>
             Volver al Menú
           </button>
         </div>
@@ -265,78 +269,101 @@ export default function EvaluacionGP() {
 /* ========= ESTILOS ========= */
 const bg: React.CSSProperties = {
   minHeight: "100vh",
-  padding: 24,
+  padding: "1.5rem",
   background: "linear-gradient(135deg,#e0e7ff,#f5e8ff)",
+  fontFamily: "'Inter', sans-serif",
+  WebkitFontSmoothing: "antialiased",
+  MozOsxFontSmoothing: "grayscale",
+  color: "#222",
 };
 
 const card: React.CSSProperties = {
-  maxWidth: 800,
+  maxWidth: "48rem", // 768px
   margin: "0 auto",
   background: "#fff",
-  padding: 32,
-  borderRadius: 24,
+  padding: "2rem",
+  borderRadius: "1.5rem",
   boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
 };
 
 const title: React.CSSProperties = {
   textAlign: "center",
-  fontSize: 26,
-  marginBottom: 20,
+  fontSize: "1.625rem", // 26px
+  marginBottom: "1.25rem",
+  color: "#111",
 };
 
 const input: React.CSSProperties = {
   width: "100%",
-  padding: 12,
-  borderRadius: 12,
-  marginBottom: 10,
-  border: "1px solid #ddd",
+  padding: "0.75rem",
+  borderRadius: "0.75rem",
+  marginBottom: "0.625rem",
+  border: "1px solid #aaa",
+  fontSize: "1rem",
+  color: "#111",
+};
+
+const fechaHora: React.CSSProperties = {
+  marginBottom: "1rem",
+  color: "#222",
+  fontSize: "0.875rem",
 };
 
 const criterioBox: React.CSSProperties = {
   border: "1px solid #eee",
-  padding: 16,
-  borderRadius: 16,
-  marginBottom: 14,
+  padding: "1rem",
+  borderRadius: "1rem",
+  marginBottom: "0.875rem",
+  fontSize: "1rem",
+  color: "#111",
 };
 
 const total: React.CSSProperties = {
   textAlign: "center",
-  margin: "20px 0",
+  margin: "1.25rem 0",
+  fontSize: "1.25rem",
+  fontWeight: 600,
+  color: "#111",
 };
 
 const btnPrimary: React.CSSProperties = {
   flex: 1,
   background: "#4f46e5",
   color: "#fff",
-  padding: 14,
-  borderRadius: 14,
+  padding: "0.875rem",
+  borderRadius: "0.875rem",
   border: "none",
   cursor: "pointer",
+  fontSize: "1rem",
 };
 
 const btnSec: React.CSSProperties = {
   flex: 1,
   background: "#e5e7eb",
-  color: "#000",
-  padding: 14,
-  borderRadius: 14,
+  color: "#111",
+  padding: "0.875rem",
+  borderRadius: "0.875rem",
   border: "none",
   cursor: "pointer",
+  fontSize: "1rem",
 };
 
 const btnSmall: React.CSSProperties = {
   background: "#4ade80",
   color: "#fff",
   border: "none",
-  borderRadius: 8,
-  padding: "6px 12px",
+  borderRadius: "0.5rem",
+  padding: "0.375rem 0.75rem",
   cursor: "pointer",
+  fontSize: "0.875rem",
 };
 
 const ok: React.CSSProperties = {
   background: "#dcfce7",
-  padding: 12,
-  borderRadius: 12,
+  padding: "0.75rem",
+  borderRadius: "0.75rem",
   textAlign: "center",
-  marginBottom: 16,
+  marginBottom: "1rem",
+  fontSize: "1rem",
+  color: "#166534",
 };
