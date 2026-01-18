@@ -4,7 +4,7 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-8">
       <h1 className="text-4xl font-bold mb-10 text-gray-800">
-        Dashboard JA
+        IGLESIA FLORIDA NORTE - MENÚ PRINCIPAL
       </h1>
 
       <div className="grid gap-8 md:grid-cols-3">
