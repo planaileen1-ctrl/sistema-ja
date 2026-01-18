@@ -57,6 +57,22 @@ export default function DashboardPage() {
           </div>
         </Link>
 
+        {/* 🆕 Materiales y Recursos JA */}
+        <Link href="/dashboard/directiva-ja/materiales-recursos">
+          <div className="group cursor-pointer rounded-3xl bg-gradient-to-br from-cyan-500 to-sky-600 p-6 text-white shadow-lg transition hover:-translate-y-2 hover:shadow-2xl">
+            <div className="mb-4 text-4xl">📚</div>
+            <h2 className="text-2xl font-semibold mb-2">
+              Materiales y Recursos JA
+            </h2>
+            <p className="text-cyan-100">
+              Manuales, guías, programas y recursos oficiales.
+            </p>
+            <span className="mt-4 inline-block text-sm opacity-80 group-hover:opacity-100">
+              Entrar →
+            </span>
+          </div>
+        </Link>
+
       </div>
     </main>
   );
