@@ -3,7 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp,
+} from "firebase/firestore";
+
+/* ========= INTERFACES ========= */
 
 interface Invitado {
   nombre: string;
@@ -16,41 +27,45 @@ interface Grupo {
   lider: string;
 }
 
+/* ========= COMPONENTE ========= */
+
 export default function EvaluacionGP() {
   const router = useRouter();
 
-  // Datos fijos que se conservan
-  const [calificador, setCalificador] = useState<string>("");
-  const [grupoPertenece, setGrupoPertenece] = useState<string>("");
+  // Datos fijos
+  const [calificador, setCalificador] = useState("");
+  const [grupoPertenece, setGrupoPertenece] = useState("");
 
-  // Grupo que va a ser evaluado
-  const [grupoEvaluado, setGrupoEvaluado] = useState<string>("");
+  // Grupo evaluado
+  const [grupoEvaluado, setGrupoEvaluado] = useState("");
 
-  // Lista de grupos existentes desde Firebase
+  // Grupos cargados desde Firebase (SIN DEDUPLICAR)
   const [grupos, setGrupos] = useState<Grupo[]>([]);
 
   // Criterios
-  const [puntosAsistencia, setPuntosAsistencia] = useState<number>(0);
-  const [puntosPresentacion, setPuntosPresentacion] = useState<number>(0);
+  const [puntosAsistencia, setPuntosAsistencia] = useState(0);
+  const [puntosPresentacion, setPuntosPresentacion] = useState(0);
 
-  // Lista de invitados
+  // Invitados
   const [invitados, setInvitados] = useState<Invitado[]>([]);
-
-  const [nombreInvitado, setNombreInvitado] = useState<string>("");
-  const [edadInvitado, setEdadInvitado] = useState<string>("");
+  const [nombreInvitado, setNombreInvitado] = useState("");
+  const [edadInvitado, setEdadInvitado] = useState("");
 
   const [guardado, setGuardado] = useState(false);
 
-  // Fecha y hora automáticas
+  // Fecha y hora
   const fecha = new Date().toISOString().split("T")[0];
   const hora = new Date().toLocaleTimeString();
 
-  // ======= Funciones =======
+  /* ========= FUNCIONES ========= */
 
+  // 🔥 CARGAR GRUPOS (MOSTRAR TODOS)
   const cargarGrupos = async () => {
     try {
       const snapshot = await getDocs(collection(db, "grupos_gp"));
+
       const lista: Grupo[] = [];
+
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.nombreGrupo && data.lider) {
@@ -61,13 +76,18 @@ export default function EvaluacionGP() {
           });
         }
       });
-      lista.sort((a, b) => a.nombreGrupo.localeCompare(b.nombreGrupo));
+
+      lista.sort((a, b) =>
+        a.nombreGrupo.localeCompare(b.nombreGrupo)
+      );
+
       setGrupos(lista);
-    } catch (e) {
-      console.error("Error al cargar grupos:", e);
+    } catch (error) {
+      console.error("Error al cargar grupos:", error);
     }
   };
 
+  // Cargar invitados de la última evaluación
   const cargarInvitadosAntiguos = async (nombreGrupo: string) => {
     try {
       if (!nombreGrupo) return;
@@ -80,6 +100,7 @@ export default function EvaluacionGP() {
       );
 
       const snapshot = await getDocs(q);
+
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data();
         setInvitados(data.invitados || []);
@@ -100,16 +121,32 @@ export default function EvaluacionGP() {
     cargarInvitadosAntiguos(grupoEvaluado);
   }, [grupoEvaluado]);
 
-  const puntosPorInvitado = (edad: number | null) => (edad && edad >= 16 && edad <= 29 ? 800 : 0);
+  /* ========= PUNTAJES ========= */
 
-  const totalPuntosInvitados = invitados.reduce((acc, inv) => acc + puntosPorInvitado(inv.edad), 0);
-  const totalPuntos = puntosAsistencia + puntosPresentacion + totalPuntosInvitados;
+  const puntosPorInvitado = (edad: number | null) =>
+    edad && edad >= 16 && edad <= 29 ? 800 : 0;
+
+  const totalPuntosInvitados = invitados.reduce(
+    (acc, inv) => acc + puntosPorInvitado(inv.edad),
+    0
+  );
+
+  const totalPuntos =
+    puntosAsistencia + puntosPresentacion + totalPuntosInvitados;
+
+  /* ========= ACCIONES ========= */
 
   const agregarInvitado = () => {
-    if (!nombreInvitado || !edadInvitado) return alert("Completa el nombre y edad del invitado");
+    if (!nombreInvitado || !edadInvitado) {
+      alert("Completa nombre y edad");
+      return;
+    }
 
     const edad = Number(edadInvitado);
-    if (isNaN(edad) || edad <= 0) return alert("Edad inválida");
+    if (isNaN(edad) || edad <= 0) {
+      alert("Edad inválida");
+      return;
+    }
 
     setInvitados([...invitados, { nombre: nombreInvitado, edad }]);
     setNombreInvitado("");
@@ -118,7 +155,8 @@ export default function EvaluacionGP() {
 
   const guardarEvaluacion = async () => {
     if (!calificador || !grupoPertenece || !grupoEvaluado) {
-      return alert("Completa todos los campos obligatorios");
+      alert("Completa todos los campos obligatorios");
+      return;
     }
 
     try {
@@ -142,16 +180,17 @@ export default function EvaluacionGP() {
       setInvitados([]);
     } catch (e) {
       console.error(e);
-      alert("Error al guardar la evaluación");
+      alert("Error al guardar evaluación");
     }
   };
+
+  /* ========= UI ========= */
 
   return (
     <main style={bg}>
       <div style={card}>
         <h1 style={title}>Evaluación Grupo Pequeño</h1>
 
-        {/* Calificador */}
         <input
           type="text"
           placeholder="Nombre del calificador"
@@ -160,7 +199,6 @@ export default function EvaluacionGP() {
           style={input}
         />
 
-        {/* Grupo al que pertenece */}
         <input
           type="text"
           placeholder="Grupo al que pertenece"
@@ -169,96 +207,86 @@ export default function EvaluacionGP() {
           style={input}
         />
 
-        {/* Grupo evaluado */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ marginBottom: 6, display: "block", fontWeight: 600 }}>Grupo a evaluar:</label>
-          <select
-            value={grupoEvaluado}
-            onChange={(e) => setGrupoEvaluado(e.target.value)}
-            style={input}
-          >
-            <option value="">-- Selecciona un grupo --</option>
-            {grupos.map((g) => (
-              <option key={g.id} value={g.nombreGrupo}>
-                {g.nombreGrupo} - Líder: {g.lider}
-              </option>
-            ))}
-          </select>
-        </div>
+        <label style={{ fontWeight: 600 }}>Grupo a evaluar</label>
+        <select
+          value={grupoEvaluado}
+          onChange={(e) => setGrupoEvaluado(e.target.value)}
+          style={input}
+        >
+          <option value="">-- Selecciona un grupo --</option>
+          {grupos.map((g) => (
+            <option key={g.id} value={g.nombreGrupo}>
+              {g.nombreGrupo} — Líder: {g.lider}
+            </option>
+          ))}
+        </select>
 
-        {/* Fecha y hora */}
         <div style={fechaHora}>
-          📅 Fecha: {fecha} | ⏰ Hora: {hora}
+          📅 {fecha} | ⏰ {hora}
         </div>
 
-        {/* Asistencia puntual */}
         <div style={criterioBox}>
-          <strong>Asistencia puntual:</strong>
+          <strong>Asistencia puntual</strong>
           <input
             type="number"
-            placeholder="Ingrese puntos"
             value={puntosAsistencia}
             onChange={(e) => setPuntosAsistencia(Number(e.target.value))}
             style={input}
           />
         </div>
 
-        {/* Invitados */}
         <div style={criterioBox}>
-          <strong>Invitados:</strong>
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <strong>Invitados</strong>
+          <div style={{ display: "flex", gap: 8 }}>
             <input
-              type="text"
-              placeholder="Nombre del invitado"
+              placeholder="Nombre"
               value={nombreInvitado}
               onChange={(e) => setNombreInvitado(e.target.value)}
               style={{ ...input, flex: 2 }}
             />
             <input
-              type="number"
               placeholder="Edad"
               value={edadInvitado}
               onChange={(e) => setEdadInvitado(e.target.value)}
               style={{ ...input, flex: 1 }}
             />
             <button onClick={agregarInvitado} style={btnSmall}>
-              Agregar
+              +
             </button>
           </div>
 
           <ul>
             {invitados.map((inv, i) => (
               <li key={i}>
-                {inv.nombre} - {inv.edad} años → Puntos: {puntosPorInvitado(inv.edad)}
+                {inv.nombre} ({inv.edad}) → {puntosPorInvitado(inv.edad)} pts
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Presentación del programa */}
         <div style={criterioBox}>
-          <strong>Presentación del programa:</strong>
+          <strong>Presentación</strong>
           <input
             type="number"
-            placeholder="Ingrese puntos"
             value={puntosPresentacion}
             onChange={(e) => setPuntosPresentacion(Number(e.target.value))}
             style={input}
           />
         </div>
 
-        {/* Total */}
         <h2 style={total}>Total: {totalPuntos} puntos</h2>
 
-        {guardado && <div style={ok}>✅ Evaluación guardada correctamente</div>}
+        {guardado && <div style={ok}>✅ Evaluación guardada</div>}
 
-        {/* Botones */}
-        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 12 }}>
           <button onClick={guardarEvaluacion} style={btnPrimary}>
-            Guardar Evaluación
+            Guardar
           </button>
-          <button onClick={() => router.push("/dashboard/directiva-ja/menu")} style={btnSec}>
-            Volver al Menú
+          <button
+            onClick={() => router.push("/dashboard/directiva-ja/menu")}
+            style={btnSec}
+          >
+            Volver
           </button>
         </div>
       </div>
@@ -267,18 +295,15 @@ export default function EvaluacionGP() {
 }
 
 /* ========= ESTILOS ========= */
+
 const bg: React.CSSProperties = {
   minHeight: "100vh",
   padding: "1.5rem",
   background: "linear-gradient(135deg,#e0e7ff,#f5e8ff)",
-  fontFamily: "'Inter', sans-serif",
-  WebkitFontSmoothing: "antialiased",
-  MozOsxFontSmoothing: "grayscale",
-  color: "#222",
 };
 
 const card: React.CSSProperties = {
-  maxWidth: "48rem", // 768px
+  maxWidth: "48rem",
   margin: "0 auto",
   background: "#fff",
   padding: "2rem",
@@ -288,74 +313,59 @@ const card: React.CSSProperties = {
 
 const title: React.CSSProperties = {
   textAlign: "center",
-  fontSize: "1.625rem", // 26px
-  marginBottom: "1.25rem",
-  color: "#111",
+  fontSize: "1.6rem",
+  marginBottom: "1rem",
 };
 
 const input: React.CSSProperties = {
   width: "100%",
   padding: "0.75rem",
   borderRadius: "0.75rem",
-  marginBottom: "0.625rem",
   border: "1px solid #aaa",
-  fontSize: "1rem",
-  color: "#111",
+  marginBottom: "0.6rem",
 };
 
 const fechaHora: React.CSSProperties = {
   marginBottom: "1rem",
-  color: "#222",
-  fontSize: "0.875rem",
+  fontSize: "0.9rem",
 };
 
 const criterioBox: React.CSSProperties = {
   border: "1px solid #eee",
   padding: "1rem",
   borderRadius: "1rem",
-  marginBottom: "0.875rem",
-  fontSize: "1rem",
-  color: "#111",
+  marginBottom: "1rem",
 };
 
 const total: React.CSSProperties = {
   textAlign: "center",
-  margin: "1.25rem 0",
-  fontSize: "1.25rem",
+  fontSize: "1.3rem",
   fontWeight: 600,
-  color: "#111",
 };
 
 const btnPrimary: React.CSSProperties = {
   flex: 1,
   background: "#4f46e5",
   color: "#fff",
-  padding: "0.875rem",
-  borderRadius: "0.875rem",
+  padding: "0.9rem",
+  borderRadius: "0.8rem",
   border: "none",
-  cursor: "pointer",
-  fontSize: "1rem",
 };
 
 const btnSec: React.CSSProperties = {
   flex: 1,
   background: "#e5e7eb",
-  color: "#111",
-  padding: "0.875rem",
-  borderRadius: "0.875rem",
+  padding: "0.9rem",
+  borderRadius: "0.8rem",
   border: "none",
-  cursor: "pointer",
-  fontSize: "1rem",
 };
 
 const btnSmall: React.CSSProperties = {
-  background: "#4ade80",
+  background: "#22c55e",
   color: "#fff",
-  border: "none",
+  padding: "0.5rem 0.8rem",
   borderRadius: "0.5rem",
-  padding: "0.375rem 0.75rem",
-  cursor: "pointer",
-  fontSize: "0.875rem",
+  border: "none",
 };
 
 const ok: React.CSSProperties = {
@@ -364,6 +374,4 @@ const ok: React.CSSProperties = {
   borderRadius: "0.75rem",
   textAlign: "center",
   marginBottom: "1rem",
-  fontSize: "1rem",
-  color: "#166534",
 };
