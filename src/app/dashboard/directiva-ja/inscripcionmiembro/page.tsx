@@ -56,7 +56,7 @@ export default function InscripcionMiembroPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
+    <main className="min-h-screen bg-linear-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
       <div className="max-w-2xl mx-auto bg-white/90 backdrop-blur p-8 rounded-3xl shadow-2xl">
 
         {/* ===== TÍTULO ===== */}

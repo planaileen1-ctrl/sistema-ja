@@ -42,7 +42,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 p-4">
+    <main className="min-h-screen flex items-center justify-center bg-linear-to-br from-indigo-600 to-purple-700 p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md relative">
 
         {/* BOTÓN VOLVER */}
