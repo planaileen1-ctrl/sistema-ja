@@ -39,14 +39,12 @@ export default function VerMiembrosGP() {
 
       setGrupos(data);
 
-      // calcular total de miembros
       const total = data.reduce(
         (acc, g) => acc + (g.miembros?.length || 0),
         0
       );
       setTotalMiembros(total);
 
-      // mantener grupo activo actualizado
       if (grupoActivo) {
         const actualizado = data.find((g) => g.id === grupoActivo.id);
         setGrupoActivo(actualizado || null);
@@ -57,25 +55,33 @@ export default function VerMiembrosGP() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-8">
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-xl">
+    <main className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
+      <div className="max-w-5xl mx-auto bg-white/90 backdrop-blur p-8 rounded-3xl shadow-2xl">
 
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          Miembros por Grupo Pequeño
+        {/* ===== TÍTULO ===== */}
+        <h1 className="text-3xl font-extrabold mb-8 text-center text-indigo-700">
+          👥 Miembros por Grupo Pequeño
         </h1>
 
         {/* ======= TOTALES ======= */}
-        <div className="mb-6 flex justify-between text-gray-700 font-semibold">
-          <div>Total Grupos: {grupos.length}</div>
-          <div>Total Miembros: {totalMiembros}</div>
+        <div className="mb-8 grid grid-cols-2 gap-4">
+          <div className="bg-indigo-600 text-white rounded-2xl p-4 text-center shadow">
+            <div className="text-sm opacity-80">Total Grupos</div>
+            <div className="text-3xl font-bold">{grupos.length}</div>
+          </div>
+
+          <div className="bg-pink-500 text-white rounded-2xl p-4 text-center shadow">
+            <div className="text-sm opacity-80">Total Miembros</div>
+            <div className="text-3xl font-bold">{totalMiembros}</div>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-8">
 
           {/* ======= LISTA DE GRUPOS ======= */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">
-              Grupos inscritos
+            <h2 className="text-xl font-bold mb-4 text-gray-700">
+              📌 Grupos inscritos
             </h2>
 
             {grupos.length === 0 && (
@@ -84,40 +90,48 @@ export default function VerMiembrosGP() {
               </p>
             )}
 
-            <ul className="space-y-3">
-              {grupos.map((grupo) => (
-                <li
-                  key={grupo.id}
-                  onClick={() => setGrupoActivo(grupo)}
-                  className={`p-4 rounded-xl cursor-pointer transition
-                    ${
-                      grupoActivo?.id === grupo.id
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 hover:bg-slate-200"
-                    }
-                  `}
-                >
-                  <strong>{grupo.nombreGrupo}</strong>
-                  <p className="text-sm opacity-80">
-                    Líder: {grupo.lider}
-                  </p>
-                  <p className="text-sm opacity-80">
-                    Miembros: {grupo.miembros.length}
-                  </p>
-                </li>
-              ))}
+            <ul className="space-y-4">
+              {grupos.map((grupo) => {
+                const activo = grupoActivo?.id === grupo.id;
+
+                return (
+                  <li
+                    key={grupo.id}
+                    onClick={() => setGrupoActivo(grupo)}
+                    className={`p-5 rounded-2xl cursor-pointer transition-all duration-200 shadow
+                      ${
+                        activo
+                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-[1.02]"
+                          : "bg-white hover:shadow-lg hover:-translate-y-0.5"
+                      }
+                    `}
+                  >
+                    <div className="text-lg font-bold">
+                      {grupo.nombreGrupo}
+                    </div>
+
+                    <div className={`text-sm mt-1 ${activo ? "opacity-90" : "text-gray-600"}`}>
+                      👤 Líder: {grupo.lider}
+                    </div>
+
+                    <div className={`text-sm mt-1 ${activo ? "opacity-90" : "text-gray-600"}`}>
+                      👥 Miembros: {grupo.miembros.length}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
           {/* ======= MIEMBROS ======= */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">
-              Miembros
+            <h2 className="text-xl font-bold mb-4 text-gray-700">
+              📋 Miembros
             </h2>
 
             {!grupoActivo && (
               <p className="text-gray-500">
-                Selecciona un grupo
+                Selecciona un grupo para ver sus miembros
               </p>
             )}
 
@@ -127,13 +141,18 @@ export default function VerMiembrosGP() {
               </p>
             )}
 
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {grupoActivo?.miembros.map((m, i) => (
                 <li
                   key={i}
-                  className="bg-slate-100 p-3 rounded-xl"
+                  className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 p-3 rounded-xl shadow-sm"
                 >
-                  {i + 1}. 👤 {m.nombre}
+                  <span className="w-7 h-7 flex items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-bold">
+                    {i + 1}
+                  </span>
+                  <span className="font-medium text-gray-700">
+                    {m.nombre}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -142,10 +161,10 @@ export default function VerMiembrosGP() {
         </div>
 
         {/* ======= VOLVER ======= */}
-        <div className="mt-8 text-center">
+        <div className="mt-10 text-center">
           <Link
             href="/dashboard"
-            className="text-indigo-600 font-semibold hover:underline"
+            className="inline-flex items-center gap-2 text-indigo-700 font-bold hover:underline"
           >
             ← Volver al menú
           </Link>
