@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -14,6 +14,9 @@ import { db } from "@/lib/firebase";
 /* ===== TIPOS ===== */
 type Miembro = {
   nombre: string;
+  fechaNacimiento: Timestamp;
+  edad: number;
+  sexo: "Hombre" | "Mujer";
 };
 
 export default function InscripcionMiembroPage() {
@@ -22,9 +25,54 @@ export default function InscripcionMiembroPage() {
   const [grupoId, setGrupoId] = useState<string | null>(null);
 
   const [miembro, setMiembro] = useState("");
+  const [dia, setDia] = useState("");
+  const [mes, setMes] = useState("");
+  const [anio, setAnio] = useState("");
+  const [sexo, setSexo] = useState<"Hombre" | "Mujer" | "">("");
+  const [edad, setEdad] = useState<number | null>(null);
+
   const [miembros, setMiembros] = useState<Miembro[]>([]);
 
-  /* ===== CREAR GRUPO (UNA SOLA VEZ) ===== */
+  /* ===== HELPERS ===== */
+  const dias = Array.from({ length: 31 }, (_, i) => i + 1);
+  const meses = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+  const anioActual = new Date().getFullYear();
+  const anios = Array.from({ length: 90 }, (_, i) => anioActual - i);
+
+  /* ===== CALCULAR EDAD ===== */
+  const calcularEdad = (d: number, m: number, a: number) => {
+    const hoy = new Date();
+    let e = hoy.getFullYear() - a;
+    const mesDiff = hoy.getMonth() + 1 - m;
+
+    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < d)) {
+      e--;
+    }
+    return e;
+  };
+
+  /* ===== MANEJAR CAMBIO FECHA ===== */
+  const actualizarEdad = (d: string, m: string, a: string) => {
+    if (d && m && a) {
+      const e = calcularEdad(Number(d), Number(m), Number(a));
+      setEdad(e);
+    }
+  };
+
+  /* ===== CREAR GRUPO ===== */
   const crearGrupo = async () => {
     if (!nombreGrupo.trim() || !lider.trim()) {
       alert("Ingresa nombre del grupo y líder");
@@ -43,9 +91,32 @@ export default function InscripcionMiembroPage() {
 
   /* ===== AGREGAR MIEMBRO ===== */
   const agregarMiembro = async () => {
-    if (!miembro.trim() || !grupoId) return;
+    if (
+      !miembro.trim() ||
+      !dia ||
+      !mes ||
+      !anio ||
+      !sexo ||
+      edad === null ||
+      !grupoId
+    )
+      return;
 
-    const nuevosMiembros = [...miembros, { nombre: miembro.trim() }];
+    const fecha = new Date(
+      Number(anio),
+      Number(mes) - 1,
+      Number(dia)
+    );
+
+    const nuevosMiembros: Miembro[] = [
+      ...miembros,
+      {
+        nombre: miembro.trim(),
+        fechaNacimiento: Timestamp.fromDate(fecha),
+        edad,
+        sexo,
+      },
+    ];
 
     await updateDoc(doc(db, "grupos_gp", grupoId), {
       miembros: nuevosMiembros,
@@ -53,14 +124,18 @@ export default function InscripcionMiembroPage() {
 
     setMiembros(nuevosMiembros);
     setMiembro("");
+    setDia("");
+    setMes("");
+    setAnio("");
+    setSexo("");
+    setEdad(null);
   };
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
+    <main className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 p-6">
       <div className="max-w-2xl mx-auto bg-white/90 backdrop-blur p-8 rounded-3xl shadow-2xl">
 
-        {/* ===== TÍTULO ===== */}
-        <h1 className="text-3xl font-extrabold mb-8 text-center text-indigo-700">
+        <h1 className="text-4xl font-extrabold mb-8 text-center text-indigo-700">
           📝 Inscripción de Miembros GP
         </h1>
 
@@ -71,19 +146,19 @@ export default function InscripcionMiembroPage() {
               placeholder="Nombre del Grupo Pequeño"
               value={nombreGrupo}
               onChange={(e) => setNombreGrupo(e.target.value)}
-              className="w-full p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-4 rounded-xl border focus:ring-2 focus:ring-indigo-500"
             />
 
             <input
               placeholder="Nombre del Líder"
               value={lider}
               onChange={(e) => setLider(e.target.value)}
-              className="w-full p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-4 rounded-xl border focus:ring-2 focus:ring-indigo-500"
             />
 
             <button
               onClick={crearGrupo}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:scale-[1.01] transition"
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold shadow-lg hover:scale-[1.01] transition"
             >
               Crear grupo
             </button>
@@ -94,58 +169,131 @@ export default function InscripcionMiembroPage() {
         {grupoId && (
           <>
             <div className="mb-6 text-center">
-              <div className="text-sm text-slate-500">
-                Grupo creado
-              </div>
               <div className="text-xl font-bold text-indigo-700">
                 {nombreGrupo}
               </div>
             </div>
 
-            <div className="flex gap-3 mb-6">
-              <input
-                placeholder="Nombre del miembro"
-                value={miembro}
-                onChange={(e) => setMiembro(e.target.value)}
-                className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+            <input
+              placeholder="Nombre y apellido del miembro"
+              value={miembro}
+              onChange={(e) => setMiembro(e.target.value)}
+              className="w-full p-4 mb-4 rounded-xl border focus:ring-2 focus:ring-indigo-500"
+            />
+
+            {/* ===== SEXO ===== */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <button
-                onClick={agregarMiembro}
-                className="bg-indigo-600 text-white px-6 rounded-xl font-semibold shadow hover:bg-indigo-700 transition"
+                onClick={() => setSexo("Hombre")}
+                className={`p-4 rounded-xl font-bold ${
+                  sexo === "Hombre"
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-100 text-blue-700"
+                }`}
               >
-                Agregar
+                ♂ Hombre
+              </button>
+
+              <button
+                onClick={() => setSexo("Mujer")}
+                className={`p-4 rounded-xl font-bold ${
+                  sexo === "Mujer"
+                    ? "bg-pink-600 text-white"
+                    : "bg-pink-100 text-pink-700"
+                }`}
+              >
+                ♀ Mujer
               </button>
             </div>
 
-            <ul className="space-y-3 mb-8">
-              {miembros.length === 0 && (
-                <li className="text-slate-500 text-center">
-                  Aún no hay miembros registrados
-                </li>
-              )}
+            {/* ===== FECHA ===== */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <select
+                value={dia}
+                onChange={(e) => {
+                  setDia(e.target.value);
+                  actualizarEdad(e.target.value, mes, anio);
+                }}
+                className="p-3 rounded-xl border"
+              >
+                <option value="">Día</option>
+                {dias.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
 
+              <select
+                value={mes}
+                onChange={(e) => {
+                  setMes(e.target.value);
+                  actualizarEdad(dia, e.target.value, anio);
+                }}
+                className="p-3 rounded-xl border"
+              >
+                <option value="">Mes</option>
+                {meses.map((m, i) => (
+                  <option key={m} value={i + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={anio}
+                onChange={(e) => {
+                  setAnio(e.target.value);
+                  actualizarEdad(dia, mes, e.target.value);
+                }}
+                className="p-3 rounded-xl border"
+              >
+                <option value="">Año</option>
+                {anios.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ===== EDAD ===== */}
+            {edad !== null && (
+              <div className="mb-4 text-center text-lg font-bold text-indigo-700">
+                🎂 Edad: {edad} años
+              </div>
+            )}
+
+            <button
+              onClick={agregarMiembro}
+              className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold mb-6 shadow-lg"
+            >
+              Agregar miembro
+            </button>
+
+            {/* ===== LISTA ===== */}
+            <ul className="space-y-3">
               {miembros.map((m, i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm"
+                  className="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border"
                 >
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-600 text-white font-bold">
-                    {i + 1}
-                  </span>
-                  <span className="font-medium text-slate-700">
+                  <div className="font-bold text-indigo-700">
                     {m.nombre}
-                  </span>
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {m.sexo} · {m.edad} años
+                  </div>
                 </li>
               ))}
             </ul>
           </>
         )}
 
-        {/* ===== VOLVER ===== */}
-        <div className="text-center">
+        <div className="text-center mt-8">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-indigo-700 font-bold hover:underline"
+            className="text-indigo-700 font-bold hover:underline"
           >
             ← Volver al menú
           </Link>

@@ -29,11 +29,16 @@ export default function VerMiembrosGP() {
     const unsub = onSnapshot(q, (snapshot) => {
       const data: Grupo[] = snapshot.docs.map((doc) => {
         const d = doc.data();
+        const miembros = d.miembros || [];
+
+        // Incluir al líder como miembro también
+        const miembrosConLider = [{ nombre: d.lider }, ...miembros];
+
         return {
           id: doc.id,
           nombreGrupo: d.nombreGrupo,
           lider: d.lider,
-          miembros: d.miembros || [],
+          miembros: miembrosConLider,
         };
       });
 
@@ -55,7 +60,7 @@ export default function VerMiembrosGP() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
+    <main className="min-h-screen bg-linear-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
       <div className="max-w-5xl mx-auto bg-white/90 backdrop-blur p-8 rounded-3xl shadow-2xl">
 
         {/* ===== TÍTULO ===== */}
@@ -101,7 +106,7 @@ export default function VerMiembrosGP() {
                     className={`p-5 rounded-2xl cursor-pointer transition-all duration-200 shadow
                       ${
                         activo
-                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-[1.02]"
+                          ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white scale-[1.02]"
                           : "bg-white hover:shadow-lg hover:-translate-y-0.5"
                       }
                     `}
